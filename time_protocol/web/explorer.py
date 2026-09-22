@@ -10,6 +10,9 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, unquote
 
 from .template_engine import render_template
+from ..openapi import get_openapi_json, get_swagger_ui_html
+from ..difficulty_chart import generate_difficulty_chart, generate_blocktime_chart
+from ..hd_wallet import HDWallet
 
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
@@ -55,6 +58,16 @@ class ExplorerHandler(BaseHTTPRequestHandler):
                 return self._api_balance(unquote(path.split("/", 3)[-1]))
             elif path == "/api/mining/status":
                 return self._api_mining_status()
+            elif path == "/api/difficulty/chart":
+                return self._api_difficulty_chart()
+            elif path == "/api/blocktime/chart":
+                return self._api_blocktime_chart()
+            elif path == "/api/openapi.json":
+                return self._api_openapi_json()
+            elif path == "/api/docs":
+                return self._render_swagger()
+            elif path == "/api/hdwallet/new":
+                return self._api_hdwallet_new()
             
             self._error(404, "Not Found")
         except Exception as e:
@@ -82,6 +95,8 @@ class ExplorerHandler(BaseHTTPRequestHandler):
                 return self._api_mine_one(data)
             elif path == "/api/tx/send":
                 return self._api_tx_send(data)
+            elif path == "/api/mining/start-parallel":
+                return self._api_mining_start_parallel(data)
             
             self._error(404, "Not Found")
         except Exception as e:
@@ -394,6 +409,63 @@ class ExplorerHandler(BaseHTTPRequestHandler):
             })
         except Exception as e:
             self._send_json({"status": "ERROR", "error": str(e)}, status=500)
+    
+    # ---------- Chart APIs ----------
+    def _api_difficulty_chart(self):
+        svg = generate_difficulty_chart(self.ledger.chain)
+        self.send_response(200)
+        self.send_header("Content-Type", "image/svg+xml")
+        self.send_header("Content-Length", str(len(svg)))
+        self.end_headers()
+        self.wfile.write(svg.encode())
+    
+    def _api_blocktime_chart(self):
+        svg = generate_blocktime_chart(self.ledger.chain)
+        self.send_response(200)
+        self.send_header("Content-Type", "image/svg+xml")
+        self.send_header("Content-Length", str(len(svg)))
+        self.end_headers()
+        self.wfile.write(svg.encode())
+    
+    # ---------- OpenAPI ----------
+    def _api_openapi_json(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        spec = get_openapi_json()
+        self.send_header("Content-Length", str(len(spec)))
+        self.end_headers()
+        self.wfile.write(spec.encode())
+    
+    def _render_swagger(self):
+        html = get_swagger_ui_html()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html")
+        self.send_header("Content-Length", str(len(html)))
+        self.end_headers()
+        self.wfile.write(html.encode())
+    
+    # ---------- HD Wallet ----------
+    def _api_hdwallet_new(self):
+        wallet = HDWallet.random()
+        addresses = wallet.get_addresses(5)
+        self._send_json({
+            "seed_hex": wallet.seed.hex()[:16] + "...",
+            "addresses": [{"index": i, "address": addr} for i, addr in addresses],
+        })
+    
+    # ---------- Parallel Mining ----------
+    def _api_mining_start_parallel(self, data):
+        if not self.node or not hasattr(self.node, "miner"):
+            return self._send_json({"error": "Mining not available"}, status=500)
+        addr = data.get("miner_address", "PARALLEL_MINER")
+        workers = int(data.get("workers", 2))
+        
+        from ..parallel_miner import ParallelMiningService
+        if not hasattr(self.node, "_parallel_miner") or self.node._parallel_miner is None:
+            self.node._parallel_miner = ParallelMiningService(self.node, workers=workers)
+        
+        result = self.node._parallel_miner.start(addr)
+        self._send_json(result)
     
     # ---------- Helpers ----------
     def _load_template(self, name):

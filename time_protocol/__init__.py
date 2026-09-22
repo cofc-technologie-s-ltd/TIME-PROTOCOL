@@ -1,8 +1,8 @@
 """
-TIME Protocol - A complete, working blockchain implementation.
+TIME Protocol - Complete Blockchain Implementation
 """
 
-__version__ = "3.0.0"
+__version__ = "4.0.0"
 
 # Core
 from .crypto import KeyPair, MerkleTree, hash_data, hash_object, double_hash
@@ -14,10 +14,12 @@ from .wallet import Wallet
 # Difficulty & Mining
 from .difficulty import DifficultyManager
 from .mining import MiningService, AutoSaveMiningService
+from .parallel_miner import ParallelMiner, ParallelMiningService
 
 # Node & Network
 from .node import Node
 from .p2p import P2PNode
+from .p2p_real import RealP2PNode
 from .rpc_server import run_rpc_server
 from .sync import BlockSynchronizer
 
@@ -27,6 +29,11 @@ from .storage import Storage, PersistentNode
 # Advanced features
 from .multisig import MultiSigWallet, create_2_of_3, create_3_of_5
 from .discovery import PeerDiscovery, PeerInfo
+from .hd_wallet import HDWallet
+
+# Docs & Visualization
+from .openapi import get_openapi_json, get_swagger_ui_html
+from .difficulty_chart import generate_difficulty_chart, generate_blocktime_chart
 
 # Web
 from .web.explorer import run_explorer
@@ -38,13 +45,17 @@ __all__ = [
     "Block", "Ledger", "UTXO", "Wallet",
     # Difficulty & Mining
     "DifficultyManager", "MiningService", "AutoSaveMiningService",
+    "ParallelMiner", "ParallelMiningService",
     # Node & Network
-    "Node", "P2PNode", "run_rpc_server", "BlockSynchronizer",
+    "Node", "P2PNode", "RealP2PNode", "run_rpc_server", "BlockSynchronizer",
     # Persistence
     "Storage", "PersistentNode",
     # Advanced
     "MultiSigWallet", "create_2_of_3", "create_3_of_5",
-    "PeerDiscovery", "PeerInfo",
+    "PeerDiscovery", "PeerInfo", "HDWallet",
+    # Docs
+    "get_openapi_json", "get_swagger_ui_html",
+    "generate_difficulty_chart", "generate_blocktime_chart",
     # Web
     "run_explorer",
 ]

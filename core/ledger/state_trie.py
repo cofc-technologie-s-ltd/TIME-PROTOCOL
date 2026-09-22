@@ -1,39 +1,47 @@
 import hashlib
 import json
-from typing import Dict, Any
 
-class StateLedger:
+class RealStateLedger:
+    """
+    Cryptographic State Ledger utilizing full public keys (hex) as account identifiers.
+    Eliminates capacity limits and modulo collisions entirely.
+    """
     def __init__(self):
-        self.balances: Dict[str, float] = {}
-        self.nonces: Dict[str, int] = {}
-        self.latest_block_index = 0
+        # Maps public_key_hex -> account state (balance, nonce, etc.)
+        self.accounts = {}
+        self.latest_block_index = 0  # Compatibility attribute for API/nodes
 
-    def get_balance(self, address: str) -> float:
-        return self.balances.get(address, 100.0)
+    def get_balance(self, pub_key: str) -> float:
+        return self.accounts.get(pub_key, {}).get("balance", 0.0)
 
-    def set_balance(self, address: str, amount: float):
-        self.balances[address] = amount
+    def get_nonce(self, pub_key: str) -> int:
+        return self.accounts.get(pub_key, {}).get("nonce", 0)
 
-    def apply_transaction(self, tx) -> bool:
-        sender = getattr(tx, "sender", "GENESIS")
-        recipient = getattr(tx, "recipient", "SYSTEM")
-        amount = getattr(tx, "amount", 0.0)
+    def set_balance(self, pub_key: str, balance: float):
+        if pub_key not in self.accounts:
+            self.accounts[pub_key] = {"balance": 0.0, "nonce": 0}
+        self.accounts[pub_key]["balance"] = balance
 
-        if sender != "GENESIS":
-            current_bal = self.get_balance(sender)
-            if current_bal < amount:
-                return False
-            self.set_balance(sender, current_bal - amount)
+    def apply_transaction(self, sender: str, recipient: str, amount: float, signature: str) -> bool:
+        if amount <= 0:
+            return False
+        
+        sender_balance = self.get_balance(sender)
+        if sender_balance < amount:
+            return False
 
-        rec_bal = self.get_balance(recipient)
-        self.set_balance(recipient, rec_bal + amount)
+        # Update balances
+        self.set_balance(sender, sender_balance - amount)
+        self.set_balance(recipient, self.get_balance(recipient) + amount)
+        
+        # Increment sender nonce & block index simulation
+        self.accounts[sender]["nonce"] += 1
+        self.latest_block_index += 1
         return True
 
     def get_state_root(self) -> str:
-        state_data = {
-            "balances": self.balances,
-            "nonces": self.nonces,
-            "height": self.latest_block_index
-        }
-        raw = json.dumps(state_data, sort_keys=True).encode('utf-8')
-        return hashlib.sha3_256(raw).hexdigest()
+        state_str = json.dumps(self.accounts, sort_keys=True)
+        return hashlib.sha256(state_str.encode('utf-8')).hexdigest()
+
+# Backward compatibility alias for older integration tests
+StateLedger = RealStateLedger

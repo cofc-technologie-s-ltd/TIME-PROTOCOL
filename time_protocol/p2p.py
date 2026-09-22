@@ -1,6 +1,6 @@
 """
 TIME Protocol - Peer-to-Peer Network Layer
-Real TCP-based socket communication for blockchain node synchronization.
+TCP socket communication for blockchain node synchronization.
 """
 
 import socket
@@ -8,17 +8,11 @@ import threading
 import json
 import logging
 from typing import List, Tuple, Optional
-from .block import Block
-from .transaction import Transaction
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] P2P: %(message)s')
 
+
 class P2PNode:
-    """
-    Manages TCP peer-to-peer connections between TIME Protocol nodes.
-    Handles peer discovery, block broadcasting, and transaction relay.
-    """
-    
     def __init__(self, host: str, port: int, node_instance):
         self.host = host
         self.port = port
@@ -30,19 +24,17 @@ class P2PNode:
         self._server_thread: Optional[threading.Thread] = None
 
     def start(self):
-        """Starts the P2P listening server."""
         try:
             self.socket.bind((self.host, self.port))
             self.socket.listen(5)
             self.is_running = True
             self._server_thread = threading.Thread(target=self._accept_connections, daemon=True)
             self._server_thread.start()
-            logging.info(f"P2P Node started listening on {self.host}:{self.port}")
+            logging.info(f"P2P Node started on {self.host}:{self.port}")
         except Exception as e:
-            logging.error(f"Failed to start P2P server: {e}")
+            logging.error(f"Failed to start P2P: {e}")
 
     def stop(self):
-        """Stops the P2P server and closes connections."""
         self.is_running = False
         try:
             self.socket.close()
@@ -60,68 +52,97 @@ class P2PNode:
 
     def _handle_peer(self, client_sock: socket.socket):
         try:
-            data = client_sock.recv(4096)
+            # Read all data until we have a complete JSON message
+            data = b""
+            while True:
+                chunk = client_sock.recv(65536)
+                if not chunk:
+                    break
+                data += chunk
+                try:
+                    message = json.loads(data.decode('utf-8'))
+                    break
+                except json.JSONDecodeError:
+                    continue
+            
             if not data:
                 return
-            message = json.loads(data.decode('utf-8'))
+            
             response = self._process_message(message)
             if response:
-                client_sock.sendall(json.dumps(response).encode('utf-8'))
+                response_bytes = json.dumps(response).encode('utf-8')
+                client_sock.sendall(response_bytes)
         except Exception as e:
-            logging.error(f"Error handling peer connection: {e}")
+            logging.error(f"Error handling peer: {e}")
         finally:
-            client_sock.close()
+            try:
+                client_sock.close()
+            except Exception:
+                pass
 
     def _process_message(self, message: dict) -> dict:
         msg_type = message.get("type")
         payload = message.get("payload")
         
         if msg_type == "GET_CHAIN":
+            try:
+                chain_data = [b.to_dict() for b in self.node_instance.ledger.chain]
+                return {
+                    "type": "CHAIN_RESPONSE",
+                    "payload": chain_data,
+                }
+            except Exception as e:
+                return {"type": "CHAIN_RESPONSE", "payload": [], "error": str(e)}
+        
+        elif msg_type == "PING":
+            return {"type": "PONG", "timestamp": __import__("time").time()}
+        
+        elif msg_type == "GET_PEERS":
             return {
-                "type": "CHAIN_RESPONSE",
-                "payload": [b.to_dict() for b in self.node_instance.ledger.chain]
+                "type": "PEERS_RESPONSE",
+                "payload": [{"host": h, "port": p} for h, p in self.peers],
             }
-        elif msg_type == "NEW_TRANSACTION":
-            try:
-                tx = Transaction.from_dict(payload)
-                self.node_instance.ledger.add_transaction(tx)
-                return {"status": "SUCCESS", "message": "Transaction accepted"}
-            except Exception as e:
-                return {"status": "ERROR", "message": str(e)}
-        elif msg_type == "NEW_BLOCK":
-            try:
-                block = Block.from_dict(payload)
-                if block.is_valid(self.node_instance.ledger.latest_block):
-                    self.node_instance.ledger.chain.append(block)
-                    return {"status": "SUCCESS", "message": "Block appended"}
-            except Exception as e:
-                return {"status": "ERROR", "message": str(e)}
         
         return {"status": "UNKNOWN_MESSAGE"}
 
     def connect_to_peer(self, host: str, port: int) -> bool:
-        """Connects to a remote peer node."""
         if (host, port) in self.peers or (host == self.host and port == self.port):
             return True
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(3.0)
             s.connect((host, port))
+            s.sendall(json.dumps({"type": "PING"}).encode())
+            response = s.recv(4096)
+            data = json.loads(response.decode())
             s.close()
-            self.peers.append((host, port))
-            logging.info(f"Successfully connected to peer {host}:{port}")
-            return True
+            if data.get("type") == "PONG":
+                self.peers.append((host, port))
+                logging.info(f"Connected to {host}:{port}")
+                return True
         except Exception as e:
-            logging.error(f"Could not connect to peer {host}:{port} - {e}")
-            return False
+            logging.debug(f"Connect to {host}:{port} failed: {e}")
+        return False
 
-    def broadcast_block(self, block: Block):
-        """Broadcasts a newly mined block to all connected peers."""
-        msg = {"type": "NEW_BLOCK", "payload": block.to_dict()}
+    def broadcast_block(self, block, exclude=None):
+        msg = json.dumps({"type": "NEW_BLOCK", "payload": block.to_dict()})
         for host, port in self.peers:
+            if (host, port) == exclude:
+                continue
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(3.0)
                 s.connect((host, port))
-                s.sendall(json.dumps(msg).encode('utf-8'))
+                s.sendall(msg.encode())
                 s.close()
-            except Exception as e:
-                logging.warning(f"Failed to broadcast block to {host}:{port} - {e}")
+            except Exception:
+                pass
+
+    def get_network_status(self) -> dict:
+        return {
+            "host": self.host,
+            "port": self.port,
+            "running": self.is_running,
+            "peer_count": len(self.peers),
+            "peers": [{"host": h, "port": p} for h, p in self.peers],
+        }

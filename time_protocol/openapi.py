@@ -1,6 +1,5 @@
 """
 TIME Protocol - OpenAPI/Swagger Documentation
-Auto-generated API spec + Swagger UI page.
 """
 
 import json
@@ -10,7 +9,7 @@ OPENAPI_SPEC = {
     "openapi": "3.0.0",
     "info": {
         "title": "TIME Protocol API",
-        "version": "4.0.0",
+        "version": "5.0.0",
         "description": "Post-quantum distributed ledger REST API",
         "contact": {"name": "COFC Technologies LTD"},
     },
@@ -20,12 +19,7 @@ OPENAPI_SPEC = {
             "get": {
                 "summary": "Get node status",
                 "tags": ["Node"],
-                "responses": {
-                    "200": {
-                        "description": "Node status",
-                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Status"}}},
-                    }
-                },
+                "responses": {"200": {"description": "Node status"}},
             }
         },
         "/api/chain": {
@@ -39,9 +33,6 @@ OPENAPI_SPEC = {
             "get": {
                 "summary": "Get recent blocks",
                 "tags": ["Blockchain"],
-                "parameters": [
-                    {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 10}},
-                ],
                 "responses": {"200": {"description": "Recent blocks"}},
             }
         },
@@ -83,19 +74,6 @@ OPENAPI_SPEC = {
             "post": {
                 "summary": "Start background mining",
                 "tags": ["Mining"],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "miner_address": {"type": "string"},
-                                    "workers": {"type": "integer", "default": 1},
-                                },
-                            }
-                        }
-                    }
-                },
                 "responses": {"200": {"description": "Mining started"}},
             }
         },
@@ -117,45 +95,16 @@ OPENAPI_SPEC = {
             "post": {
                 "summary": "Send transaction",
                 "tags": ["Wallet"],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "required": ["from", "to", "amount"],
-                                "properties": {
-                                    "from": {"type": "string", "description": "Private key (hex)"},
-                                    "to": {"type": "string"},
-                                    "amount": {"type": "number"},
-                                },
-                            }
-                        }
-                    }
-                },
                 "responses": {"200": {"description": "Transaction sent"}},
             }
         },
-    },
-    "components": {
-        "schemas": {
-            "Status": {
-                "type": "object",
-                "properties": {
-                    "height": {"type": "integer"},
-                    "total_blocks": {"type": "integer"},
-                    "total_utxos": {"type": "integer"},
-                    "current_difficulty": {"type": "integer"},
-                    "chain_valid": {"type": "boolean"},
-                    "mining": {
-                        "type": "object",
-                        "properties": {
-                            "running": {"type": "boolean"},
-                            "blocks_mined": {"type": "integer"},
-                        },
-                    },
-                },
-            },
-        }
+        "/api/metrics": {
+            "get": {
+                "summary": "Prometheus metrics",
+                "tags": ["Monitoring"],
+                "responses": {"200": {"description": "Metrics in Prometheus format"}},
+            }
+        },
     },
 }
 
@@ -169,12 +118,8 @@ SWAGGER_UI_HTML = """<!DOCTYPE html>
     <style>
         body { margin: 0; padding: 0; background: #0a0e27; }
         .topbar { background: linear-gradient(135deg, #4a9eff, #7b5cff) !important; }
-        .swagger-ui .info .title { color: #e0e6ed; }
         .swagger-ui { background: #0f172a; }
-        .swagger-ui .opblock { background: rgba(45,53,97,0.3); border-color: #2d3561; }
-        .swagger-ui .opblock .opblock-summary { border-color: #2d3561; }
-        .swagger-ui .opblock .opblock-summary-description { color: #8892b0; }
-        .swagger-ui .opblock-tag { color: #4a9eff; border-color: #2d3561; }
+        .swagger-ui .info .title { color: #e0e6ed; }
     </style>
 </head>
 <body>
@@ -186,8 +131,6 @@ SWAGGER_UI_HTML = """<!DOCTYPE html>
                 url: "/api/openapi.json",
                 dom_id: '#swagger-ui',
                 deepLinking: true,
-                presets: [SwaggerUIBundle.presets.apis],
-                layout: "BaseLayout"
             });
         };
     </script>
@@ -197,10 +140,8 @@ SWAGGER_UI_HTML = """<!DOCTYPE html>
 
 
 def get_openapi_json() -> str:
-    """Return OpenAPI spec as JSON string."""
     return json.dumps(OPENAPI_SPEC, indent=2)
 
 
 def get_swagger_ui_html() -> str:
-    """Return Swagger UI HTML page."""
     return SWAGGER_UI_HTML

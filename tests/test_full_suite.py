@@ -28,7 +28,7 @@ class TestFullIntegration(unittest.TestCase):
         p2p_target.start()
 
         try:
-            sync = BlockSynchronizer(p2p_target, nodes[2].ledger)
+            sync = BlockSynchronizer(p2p_node=p2p_target, ledger=nodes[2].ledger)
             result = sync.sync_with_peer("127.0.0.1", 7200)
 
             self.assertEqual(result["status"], "SYNCED")

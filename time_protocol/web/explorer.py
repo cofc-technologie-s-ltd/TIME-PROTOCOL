@@ -242,35 +242,46 @@ class ExplorerHandler(BaseHTTPRequestHandler):
     # ---------- API ----------
     def _api_status(self):
         """Combined status for dashboard auto-refresh."""
-        ledger = self.ledger
-        
-        # Mining
-        mining_status = self.node.miner.status() if self.node and hasattr(self.node, "miner") else {"running": False, "blocks_mined": 0}
-        
-        # Difficulty info
-        hashrate_str = "0 H/s"
-        avg_time = 0
-        if self.node and hasattr(self.node, "difficulty_manager"):
-            hashrate = self.node.difficulty_manager.estimate_hashrate(ledger.chain)
-            hashrate_str = self.node.difficulty_manager.format_hashrate(hashrate)
-            info = self.node.difficulty_manager.get_retarget_info(ledger.chain)
-            avg_time = info.get("average_block_time", 0)
-        
-        self._send_json({
-            "height": ledger.height,
-            "total_blocks": len(ledger.chain),
-            "total_utxos": len(ledger.utxo_set),
-            "current_difficulty": ledger.latest_block.difficulty if ledger.chain else 0,
-            "chain_valid": ledger.is_chain_valid(),
-            "mining": {
-                "running": mining_status.get("running", False),
-                "blocks_mined": mining_status.get("blocks_mined", 0),
-                "last_block_time": mining_status.get("last_block_time", 0),
-                "uptime": mining_status.get("uptime", 0),
-            },
-            "estimated_hashrate": hashrate_str,
-            "avg_block_time": avg_time,
-        })
+        try:
+            ledger = self.ledger
+            
+            # Mining - safe check
+            mining_status = {"running": False, "blocks_mined": 0, "last_block_time": 0, "uptime": 0}
+            if self.node and hasattr(self.node, "miner") and self.node.miner is not None:
+                try:
+                    mining_status = self.node.miner.status()
+                except Exception:
+                    pass
+            
+            # Difficulty - safe check
+            hashrate_str = "0 H/s"
+            avg_time = 0
+            if self.node and hasattr(self.node, "difficulty_manager") and self.node.difficulty_manager is not None:
+                try:
+                    hashrate = self.node.difficulty_manager.estimate_hashrate(ledger.chain)
+                    hashrate_str = self.node.difficulty_manager.format_hashrate(hashrate)
+                    info = self.node.difficulty_manager.get_retarget_info(ledger.chain)
+                    avg_time = info.get("average_block_time", 0)
+                except Exception:
+                    pass
+            
+            self._send_json({
+                "height": ledger.height,
+                "total_blocks": len(ledger.chain),
+                "total_utxos": len(ledger.utxo_set),
+                "current_difficulty": ledger.latest_block.difficulty if ledger.chain else 0,
+                "chain_valid": ledger.is_chain_valid(),
+                "mining": {
+                    "running": mining_status.get("running", False),
+                    "blocks_mined": mining_status.get("blocks_mined", 0),
+                    "last_block_time": mining_status.get("last_block_time", 0),
+                    "uptime": mining_status.get("uptime", 0),
+                },
+                "estimated_hashrate": hashrate_str,
+                "avg_block_time": avg_time,
+            })
+        except Exception as e:
+            self._send_json({"error": str(e)}, status=500)
     
     def _api_chain(self):
         ledger = self.ledger
@@ -291,13 +302,16 @@ class ExplorerHandler(BaseHTTPRequestHandler):
         })
     
     def _api_difficulty(self):
-        if not self.node or not hasattr(self.node, "difficulty_manager"):
-            return self._send_json({"error": "not available"}, status=404)
-        info = self.node.difficulty_manager.get_retarget_info(self.ledger.chain)
-        hashrate = self.node.difficulty_manager.estimate_hashrate(self.ledger.chain)
-        info["hashrate"] = hashrate
-        info["hashrate_formatted"] = self.node.difficulty_manager.format_hashrate(hashrate)
-        self._send_json(info)
+        try:
+            if not self.node or not hasattr(self.node, "difficulty_manager") or self.node.difficulty_manager is None:
+                return self._send_json({"current_difficulty": 0, "error": "difficulty_manager not available"}, status=200)
+            info = self.node.difficulty_manager.get_retarget_info(self.ledger.chain)
+            hashrate = self.node.difficulty_manager.estimate_hashrate(self.ledger.chain)
+            info["hashrate"] = hashrate
+            info["hashrate_formatted"] = self.node.difficulty_manager.format_hashrate(hashrate)
+            self._send_json(info)
+        except Exception as e:
+            self._send_json({"error": str(e)}, status=500)
     
     def _api_blocks(self):
         """Get recent blocks (limit query param)."""
@@ -336,23 +350,36 @@ class ExplorerHandler(BaseHTTPRequestHandler):
         })
     
     def _api_mining_status(self):
-        if not self.node or not hasattr(self.node, "miner"):
-            return self._send_json({"running": False}, status=404)
-        self._send_json(self.node.miner.status())
+        try:
+            if not self.node or not hasattr(self.node, "miner") or self.node.miner is None:
+                return self._send_json({"running": False, "blocks_mined": 0}, status=200)
+            self._send_json(self.node.miner.status())
+        except Exception as e:
+            self._send_json({"running": False, "error": str(e)}, status=200)
     
     # ---------- POST handlers ----------
     def _api_mining_start(self, data):
-        if not self.node or not hasattr(self.node, "miner"):
-            return self._send_json({"error": "Mining not available"}, status=500)
-        addr = data.get("miner_address", "WEB_MINER")
-        result = self.node.miner.start(addr)
-        self._send_json(result)
+        try:
+            if not self.node:
+                return self._send_json({"error": "Node not available"}, status=500)
+            if not hasattr(self.node, "miner") or self.node.miner is None:
+                return self._send_json({"error": "Mining not available", "status": "ERROR"}, status=500)
+            addr = data.get("miner_address", "WEB_MINER")
+            result = self.node.miner.start(addr)
+            self._send_json(result)
+        except Exception as e:
+            self._send_json({"error": str(e), "status": "ERROR"}, status=500)
     
     def _api_mining_stop(self, data):
-        if not self.node or not hasattr(self.node, "miner"):
-            return self._send_json({"error": "Mining not available"}, status=500)
-        result = self.node.miner.stop()
-        self._send_json(result)
+        try:
+            if not self.node:
+                return self._send_json({"error": "Node not available"}, status=500)
+            if not hasattr(self.node, "miner") or self.node.miner is None:
+                return self._send_json({"error": "Mining not available", "status": "ERROR"}, status=500)
+            result = self.node.miner.stop()
+            self._send_json(result)
+        except Exception as e:
+            self._send_json({"error": str(e), "status": "ERROR"}, status=500)
     
     def _api_mine_one(self, data):
         if not self.node:
@@ -446,26 +473,32 @@ class ExplorerHandler(BaseHTTPRequestHandler):
     
     # ---------- HD Wallet ----------
     def _api_hdwallet_new(self):
-        wallet = HDWallet.random()
-        addresses = wallet.get_addresses(5)
-        self._send_json({
-            "seed_hex": wallet.seed.hex()[:16] + "...",
-            "addresses": [{"index": i, "address": addr} for i, addr in addresses],
-        })
+        try:
+            wallet = HDWallet.random()
+            addresses = wallet.get_addresses(5)
+            self._send_json({
+                "seed_hex": wallet.seed.hex()[:16] + "...",
+                "addresses": [{"index": i, "address": addr} for i, addr in addresses],
+            })
+        except Exception as e:
+            self._send_json({"error": str(e)}, status=500)
     
     # ---------- Parallel Mining ----------
     def _api_mining_start_parallel(self, data):
-        if not self.node or not hasattr(self.node, "miner"):
-            return self._send_json({"error": "Mining not available"}, status=500)
-        addr = data.get("miner_address", "PARALLEL_MINER")
-        workers = int(data.get("workers", 2))
-        
-        from ..parallel_miner import ParallelMiningService
-        if not hasattr(self.node, "_parallel_miner") or self.node._parallel_miner is None:
-            self.node._parallel_miner = ParallelMiningService(self.node, workers=workers)
-        
-        result = self.node._parallel_miner.start(addr)
-        self._send_json(result)
+        try:
+            if not self.node or not hasattr(self.node, "miner"):
+                return self._send_json({"error": "Mining not available"}, status=500)
+            addr = data.get("miner_address", "PARALLEL_MINER")
+            workers = int(data.get("workers", 2))
+            
+            from ..parallel_miner import ParallelMiningService
+            if not hasattr(self.node, "_parallel_miner") or self.node._parallel_miner is None:
+                self.node._parallel_miner = ParallelMiningService(self.node, workers=workers)
+            
+            result = self.node._parallel_miner.start(addr)
+            self._send_json(result)
+        except Exception as e:
+            self._send_json({"error": str(e)}, status=500)
     
     # ---------- Helpers ----------
     def _load_template(self, name):

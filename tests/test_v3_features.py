@@ -71,8 +71,8 @@ class TestPeerDiscovery(unittest.TestCase):
     def test_merge_peer_list(self):
         d = PeerDiscovery(own_port=9001, bootstrap_nodes=[])
         added = d.merge_peer_list([
-            {"host": "1.1.1.1", "port": 9001},
-            {"host": "2.2.2.2", "port": 9002},
+            {"host": "3.3.3.3", "port": 9003},
+            {"host": "4.4.4.4", "port": 9004},
         ])
         self.assertEqual(added, 2)
 

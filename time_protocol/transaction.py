@@ -1,7 +1,6 @@
 import time
 from typing import List, Dict, Any
-from .crypto import hash_data
-
+from .crypto import hash_data, KeyPair
 
 class TxInput:
     def __init__(self, txid: str, output_index: int, signature: str = "", pubkey: str = ""):
@@ -20,8 +19,7 @@ class TxInput:
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> 'TxInput':
-        return cls(d["txid"], d["output_index"], d.get("signature", ""), d.get("pubkey", ""))
-
+        return cls(d["txid"], d["output_index"], d["signature"], d["pubkey"])
 
 class TxOutput:
     def __init__(self, amount: float, recipient_address: str):
@@ -38,7 +36,6 @@ class TxOutput:
     def from_dict(cls, d: Dict[str, Any]) -> 'TxOutput':
         return cls(d["amount"], d["recipient_address"])
 
-
 class Transaction:
     def __init__(self, inputs: List[TxInput], outputs: List[TxOutput], timestamp: float = None):
         self.inputs = inputs
@@ -47,20 +44,18 @@ class Transaction:
         self.txid = self.calculate_txid()
 
     def calculate_txid(self) -> str:
-        """Deterministic txid from inputs/outputs/timestamp (excludes signatures)."""
         data = {
-            "inputs": [
-                {"txid": i.txid, "output_index": i.output_index}
-                for i in self.inputs
-            ],
+            "inputs": [i.to_dict() for i in self.inputs],
             "outputs": [o.to_dict() for o in self.outputs],
             "timestamp": self.timestamp
         }
         return hash_data(str(data))
 
-    def get_signing_payload(self) -> str:
-        """The exact string that inputs sign. Excludes mutable signature fields."""
-        return self.txid
+    def sign_transaction(self, key_pair: KeyPair):
+        for inp in self.inputs:
+            if inp.txid != "COINBASE":
+                inp.pubkey = key_pair.public_key.to_string().hex()
+                inp.signature = key_pair.sign(self.txid)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -77,7 +72,6 @@ class Transaction:
         tx = cls(inputs, outputs, d["timestamp"])
         tx.txid = d["txid"]
         return tx
-
 
 class TransactionBuilder:
     @staticmethod

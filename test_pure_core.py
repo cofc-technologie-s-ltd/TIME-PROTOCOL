@@ -98,3 +98,20 @@ if __name__ == "__main__":
         self.assertTrue(sell_res["execution"]["matched"])
         self.assertEqual(sell_res["execution"]["executed_price"], 125.50)
         self.assertEqual(sell_res["execution"]["executed_quantity"], 500.0)
+
+    def test_telemetry_monitor(self):
+        from telemetry_monitor import SystemTelemetryMonitor
+        monitor = SystemTelemetryMonitor("VALIDATOR_NODE_01")
+        
+        # Record performance metrics
+        metric = monitor.record_metric("throughput_tps", 544220.0, "TX/sec")
+        self.assertEqual(metric["value"], 544220.0)
+
+        # Trigger security alert test
+        alert = monitor.trigger_security_alert("HIGH", "NONCE_MISMATCH", "Potential replay attempt detected.")
+        self.assertEqual(alert["severity"], "HIGH")
+
+        # Generate health report
+        report = monitor.generate_health_report()
+        self.assertEqual(report["status"], "HEALTHY")
+        self.assertEqual(report["total_security_alerts"], 1)

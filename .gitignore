@@ -95,3 +95,4 @@ docker-compose.override.yml
 # ─── Coverage Reports ─────────────────────────────────────────
 coverage.xml
 *.lcov
+openapi.json

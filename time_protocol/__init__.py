@@ -2,7 +2,7 @@
 TIME Protocol - A real, working blockchain implementation.
 """
 
-__version__ = "2.0.2"
+__version__ = "2.1.0"
 
 from .crypto import KeyPair, MerkleTree, hash_data, hash_object, double_hash
 from .transaction import Transaction, TxInput, TxOutput, TransactionBuilder
@@ -12,6 +12,7 @@ from .wallet import Wallet
 from .node import Node
 from .p2p import P2PNode
 from .rpc_server import run_rpc_server
+from .sync import BlockSynchronizer
 
 __all__ = [
     "KeyPair",
@@ -30,4 +31,5 @@ __all__ = [
     "Node",
     "P2PNode",
     "run_rpc_server",
+    "BlockSynchronizer",
 ]

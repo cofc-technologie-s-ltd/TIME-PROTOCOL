@@ -44,6 +44,8 @@ class ExplorerHandler(BaseHTTPRequestHandler):
                 self._api_chain()
             elif path == "/api/stats":
                 self._api_stats()
+            elif path == "/api/difficulty":
+                self._api_difficulty()
             elif path.startswith("/api/block/"):
                 block_index = path.split("/")[-1]
                 self._api_block(block_index)
@@ -77,13 +79,25 @@ class ExplorerHandler(BaseHTTPRequestHandler):
         # Stats
         unspent = sum(1 for u in ledger.utxo_set.values())
         
+        # Difficulty info
+        difficulty_info = {}
+        hashrate_str = "N/A"
+        if self.node and hasattr(self.node, "difficulty_manager"):
+            difficulty_info = self.node.difficulty_manager.get_retarget_info(chain)
+            hashrate = self.node.difficulty_manager.estimate_hashrate(chain)
+            hashrate_str = self.node.difficulty_manager.format_hashrate(hashrate)
+        
         context = {
             "height": ledger.height,
             "total_blocks": len(chain),
             "total_utxos": unspent,
-            "difficulty": self.node.difficulty if self.node else "?",
+            "difficulty": ledger.latest_block.difficulty if ledger.chain else "?",
             "chain_valid": ledger.is_chain_valid(),
             "blocks": blocks,
+            "blocks_until_retarget": difficulty_info.get("blocks_until_retarget", "?"),
+            "avg_block_time": difficulty_info.get("average_block_time", 0),
+            "target_block_time": difficulty_info.get("target_block_time", 10),
+            "hashrate": hashrate_str,
         }
         
         html = self._load_template("index.html")
@@ -172,6 +186,18 @@ class ExplorerHandler(BaseHTTPRequestHandler):
             "chain": [b.to_dict() for b in ledger.chain],
         }
         self._send_json(data)
+    
+    def _api_difficulty(self):
+        """Return current difficulty info."""
+        ledger = self.ledger
+        if not self.node or not hasattr(self.node, "difficulty_manager"):
+            return self._send_json({"error": "Difficulty manager not available"}, status=404)
+        
+        info = self.node.difficulty_manager.get_retarget_info(ledger.chain)
+        hashrate = self.node.difficulty_manager.estimate_hashrate(ledger.chain)
+        info["hashrate"] = hashrate
+        info["hashrate_formatted"] = self.node.difficulty_manager.format_hashrate(hashrate)
+        self._send_json(info)
     
     def _api_stats(self):
         ledger = self.ledger

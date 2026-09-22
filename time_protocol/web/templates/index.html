@@ -47,6 +47,10 @@
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(74, 158, 255, 0.2);
         }
+        .stat-card.highlight {
+            background: linear-gradient(135deg, rgba(74, 158, 255, 0.15), rgba(123, 92, 255, 0.15));
+            border-color: #4a9eff;
+        }
         .stat-label {
             color: #8892b0;
             font-size: 0.85em;
@@ -61,6 +65,12 @@
             word-break: break-all;
         }
         .stat-value.small { font-size: 1.1em; }
+        .stat-value.green { color: #22c55e; }
+        .stat-sub {
+            color: #6b7280;
+            font-size: 0.75em;
+            margin-top: 4px;
+        }
         h2 {
             color: #e0e6ed;
             margin: 30px 0 20px;
@@ -99,7 +109,6 @@
         }
         a:hover { color: #7b5cff; text-decoration: underline; }
         .hash { color: #7b5cff; }
-        .mono { font-family: 'Consolas', 'Monaco', monospace; }
         .badge {
             display: inline-block;
             padding: 4px 10px;
@@ -110,6 +119,19 @@
         }
         .badge-valid { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
         .badge-invalid { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .difficulty-bar {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 6px;
+        }
+        .difficulty-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4a9eff;
+        }
+        .difficulty-dot.empty { background: #2d3561; }
         footer {
             text-align: center;
             color: #8892b0;
@@ -136,13 +158,19 @@
                 <div class="stat-label">Total Blocks</div>
                 <div class="stat-value">{{ total_blocks }}</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Total UTXOs</div>
-                <div class="stat-value">{{ total_utxos }}</div>
+            <div class="stat-card highlight">
+                <div class="stat-label">⚙️ Difficulty</div>
+                <div class="stat-value">{{ difficulty }}</div>
+                <div class="stat-sub">Retarget in {{ blocks_until_retarget }} blocks</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Difficulty</div>
-                <div class="stat-value">{{ difficulty }}</div>
+                <div class="stat-label">⏱ Avg Block Time</div>
+                <div class="stat-value small">{{ avg_block_time }}s</div>
+                <div class="stat-sub">Target: {{ target_block_time }}s</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">⚡ Hashrate</div>
+                <div class="stat-value small">{{ hashrate }}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">Chain Status</div>
@@ -163,7 +191,8 @@
                 <tr>
                     <th>Height</th>
                     <th>Hash</th>
-                    <th>Timestamp</th>
+                    <th>Difficulty</th>
+                    <th>Time</th>
                     <th>Transactions</th>
                     <th>Nonce</th>
                 </tr>
@@ -173,6 +202,7 @@
                 <tr>
                     <td><a href="/block/{{ block.index }}">{{ block.index }}</a></td>
                     <td><a href="/block/{{ block.index }}" class="hash">{{ block.short_hash }}...</a></td>
+                    <td>{{ block.difficulty }}</td>
                     <td>{{ block.time_str }}</td>
                     <td>{{ block.tx_count }}</td>
                     <td>{{ block.nonce }}</td>
@@ -182,8 +212,8 @@
         </table>
 
         <footer>
-            <p>TIME Protocol v2.1 • Built with ❤️ • © 2026 COFC Technologies LTD</p>
-            <p>API endpoints: <a href="/api/chain">/api/chain</a> • <a href="/api/stats">/api/stats</a></p>
+            <p>TIME Protocol v2.4.0 • Dynamic Difficulty • © 2026 COFC Technologies LTD</p>
+            <p>API: <a href="/api/chain">/api/chain</a> • <a href="/api/stats">/api/stats</a> • <a href="/api/difficulty">/api/difficulty</a></p>
         </footer>
     </div>
 </body>

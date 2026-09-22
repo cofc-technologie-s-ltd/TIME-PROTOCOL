@@ -274,3 +274,41 @@ class PersistentNode:
     
     def stats(self) -> dict:
         return self.storage.stats()
+
+
+class DifficultyPersistence:
+    """
+    Helper to persist DifficultyManager settings alongside the chain.
+    """
+    
+    @staticmethod
+    def save_settings(storage: Storage, manager):
+        storage.save_metadata("difficulty_target_block_time", manager.target_block_time)
+        storage.save_metadata("difficulty_retarget_interval", manager.retarget_interval)
+    
+    @staticmethod
+    def load_settings(storage: Storage, default_target: float = 10.0, default_interval: int = 10) -> dict:
+        target = storage.load_metadata("difficulty_target_block_time")
+        interval = storage.load_metadata("difficulty_retarget_interval")
+        return {
+            "target_block_time": float(target) if target else default_target,
+            "retarget_interval": int(interval) if interval else default_interval,
+        }
+
+
+class DifficultyPersistence:
+    """Helper to persist DifficultyManager settings."""
+
+    @staticmethod
+    def save_settings(storage, manager):
+        storage.save_metadata("difficulty_target_block_time", manager.target_block_time)
+        storage.save_metadata("difficulty_retarget_interval", manager.retarget_interval)
+
+    @staticmethod
+    def load_settings(storage, default_target: float = 10.0, default_interval: int = 10) -> dict:
+        target = storage.load_metadata("difficulty_target_block_time")
+        interval = storage.load_metadata("difficulty_retarget_interval")
+        return {
+            "target_block_time": float(target) if target else default_target,
+            "retarget_interval": int(interval) if interval else default_interval,
+        }

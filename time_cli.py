@@ -1,49 +1,37 @@
-#!/usr/bin/env python3
 import sys
-import json
 import argparse
-from time_sdk import TimeProtocolSDK
+import time
+from mainnet_node import SovereignMainnetNode
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="TIME Protocol Sovereign CLI - Enterprise Node Management Utility"
-    )
-    parser.add_argument("--api-url", default="http://127.0.0.1:8000", help="TIME API Base URL")
-    
-    subparsers = parser.add_subparsers(dest="command", help="Available Commands")
-
-    # Command: status
-    subparsers.add_parser("status", help="Get sovereign cluster status")
-
-    # Command: account
-    acc_parser = subparsers.add_parser("account", help="Query account balance and state")
-    acc_parser.add_argument("address", help="Wallet address to query")
-
-    # Command: propose
-    prop_parser = subparsers.add_parser("propose", help="Propose a state transition / transaction")
-    prop_parser.add_argument("address", help="Target wallet address")
-    prop_parser.add_argument("balance", type=int, help="New balance")
-    prop_parser.add_argument("nonce", type=int, help="Monotonic nonce")
-    prop_parser.add_argument("--staked", type=int, default=0, help="Staked collateral")
+    parser = argparse.ArgumentParser(description="TIME Protocol Sovereign Node CLI & Management Suite")
+    parser.add_argument("action", choices=["start", "stop", "transact", "telemetry"], help="Operational action to execute")
+    parser.add_argument("--node-id", default="VALIDATOR_ROOT_01", help="Unique node identifier")
+    parser.add_argument("--host", default="127.0.0.1", help="Node bind address")
+    parser.add_argument("--port", type=int, default=8080, help="Node bind port")
+    parser.add_argument("--address", default="bc1q3cmhzwxa35egpqhr5eddrqqfmdd8jyeqqkky6h", help="Target address for transaction")
+    parser.add_argument("--balance", type=int, default=1000, help="Transaction amount / balance update")
 
     args = parser.parse_args()
-    sdk = TimeProtocolSDK(api_base_url=args.api_url)
+    node = SovereignMainnetNode(args.node_id, args.host, args.port)
 
-    try:
-        if args.command == "status":
-            res = sdk.get_system_status()
-            print(json.dumps(res, indent=2))
-        elif args.command == "account":
-            res = sdk.get_account(args.address)
-            print(json.dumps(res, indent=2))
-        elif args.command == "propose":
-            res = sdk.propose_transaction(args.address, args.balance, args.nonce, args.staked)
-            print(json.dumps(res, indent=2))
-        else:
-            parser.print_help()
-    except Exception as e:
-        print(f"❌ CLI Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    if args.action == "start":
+        res = node.start_node()
+        print(f"[TIME-MAINNET] Node started successfully: {res}")
+    elif args.action == "stop":
+        res = node.stop_node()
+        print(f"[TIME-MAINNET] Node shut down: {res}")
+    elif args.action == "transact":
+        node.start_node()
+        success = node.process_sovereign_transaction(args.address, args.balance, nonce=1, staked=500)
+        print(f"[TIME-MAINNET] Transaction commit status for {args.address}: {success}")
+        node.stop_node()
+    elif args.action == "telemetry":
+        node.start_node()
+        print(f"[TIME-MAINNET] System Telemetry Metrics for {args.node_id}:")
+        for k, v in node.telemetry.metrics.items():
+            print(f" - {k}: {v}")
+        node.stop_node()
 
 if __name__ == "__main__":
     main()

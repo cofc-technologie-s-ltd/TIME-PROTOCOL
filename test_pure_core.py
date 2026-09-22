@@ -146,3 +146,18 @@ if __name__ == "__main__":
         # Stop node
         stop_res = node.stop_node()
         self.assertEqual(stop_res["status"], "SHUTDOWN")
+
+    def test_time_cli_operations(self):
+        from mainnet_node import SovereignMainnetNode
+        node = SovereignMainnetNode("CLI_TEST_NODE", "127.0.0.1", 9090)
+        node.start_node()
+        
+        # Verify transaction pipeline via node simulation
+        res = node.process_sovereign_transaction("bc1q_test_cli_address", 5000, 1, 2500)
+        self.assertTrue(res)
+        
+        # Verify telemetry recording
+        node.telemetry.record_metric("cli_health", 1.0, "OPTIMAL")
+        self.assertIn("cli_health", node.telemetry.metrics)
+        
+        node.stop_node()

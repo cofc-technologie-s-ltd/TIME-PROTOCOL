@@ -1,0 +1,15 @@
+{
+  "project_name": "TIME Protocol Core",
+  "version": "1.0.0",
+  "enterprise": "COFC Technologies LTD",
+  "sovereign_master_wallet": "bc1q3cmhzwxa35egpqhr5eddrqqfmdd8jyeqqkky6h",
+  "network": {
+    "shared_secret_key": "TIME_PROTOCOL_QUANTUM_SECURE_2026",
+    "quorum_threshold": 0.51,
+    "nodes": [
+      {"node_id": "Node_A", "host": "127.0.0.1", "port": 9201},
+      {"node_id": "Node_B", "host": "127.0.0.1", "port": 9202},
+      {"node_id": "Node_C", "host": "127.0.0.1", "port": 9203}
+    ]
+  }
+}

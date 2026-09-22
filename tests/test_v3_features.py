@@ -104,6 +104,7 @@ class TestAutoSaveMining(unittest.TestCase):
 
 
 class TestWebAPI(unittest.TestCase):
+    """Use a unique port to avoid conflicts with other test modules."""
 
     @classmethod
     def setUpClass(cls):
@@ -113,7 +114,8 @@ class TestWebAPI(unittest.TestCase):
         cls.node.mine_pending_transactions("PRE_MINER", [])
         cls.node.mine_pending_transactions("PRE_MINER", [])
         
-        cls.server = run_explorer(cls.node, "127.0.0.1", 8099)
+        # Port 8098 - unique to this test module
+        cls.server = run_explorer(cls.node, "127.0.0.1", 8098)
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
         time.sleep(0.3)
@@ -124,12 +126,12 @@ class TestWebAPI(unittest.TestCase):
         cls.server.server_close()
 
     def _get(self, path):
-        res = urllib.request.urlopen(f"http://127.0.0.1:8099{path}")
+        res = urllib.request.urlopen(f"http://127.0.0.1:8098{path}")
         return json.loads(res.read().decode())
 
     def _post(self, path, data):
         req = urllib.request.Request(
-            f"http://127.0.0.1:8099{path}",
+            f"http://127.0.0.1:8098{path}",
             data=json.dumps(data).encode(),
             headers={"Content-Type": "application/json"},
             method="POST"

@@ -1,5 +1,8 @@
 import unittest
-from time_protocol import Node, P2PNode
+import json
+import urllib.request
+import threading
+from time_protocol import Node, P2PNode, run_rpc_server
 
 class TestP2PNetwork(unittest.TestCase):
     
@@ -20,10 +23,6 @@ class TestP2PNetwork(unittest.TestCase):
         p2p1.stop()
         p2p2.stop()
 
-if __name__ == '__main__':
-    unittest.main()
-import urllib.request
-import threading
 
 class TestRPCServer(unittest.TestCase):
     
@@ -55,3 +54,6 @@ class TestRPCServer(unittest.TestCase):
             data = json.loads(response.read().decode('utf-8'))
             self.assertEqual(data["status"], "SUCCESS")
             self.assertEqual(data["block"]["index"], 1)
+
+if __name__ == '__main__':
+    unittest.main()

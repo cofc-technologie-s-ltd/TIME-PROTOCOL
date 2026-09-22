@@ -48,3 +48,19 @@ class TestPureCoreProtocol(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_nasdaq_spac_bridge(self):
+        from nasdaq_spac_bridge import NasdaqSpacBridge
+        bridge = NasdaqSpacBridge("TIME_TEST_KEY_2026", "COFC Technologies LTD")
+        
+        # Test FIX Protocol encoding for NASDAQ/Exchange routing
+        fix_fields = {"11": "ORD_2026_001", "54": "1", "55": "TIME/USD", "38": "10000", "40": "2"}
+        fix_msg = bridge.encode_fix_message("D", "COFC_NODE", "NASDAQ_EXCHANGE", fix_fields)
+        self.assertIn("FIX.4.4", fix_msg)
+        self.assertIn("35=D", fix_msg)
+        self.assertIn("1001=", fix_msg)
+
+        # Test Smart SPAC Tokenization wrapper
+        spac_data = bridge.create_spac_token_wrapper("COFC-TIME", 1000000000, 5000000)
+        self.assertEqual(spac_data["spac_packet"]["symbol"], "COFC-TIME")
+        self.assertTrue(len(spac_data["digital_seal"]) > 0)

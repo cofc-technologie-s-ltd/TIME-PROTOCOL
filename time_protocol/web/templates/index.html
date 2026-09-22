@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TIME Protocol Explorer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: #e0e6ed;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 2px solid #2d3561;
+            margin-bottom: 30px;
+        }
+        h1 {
+            font-size: 2.5em;
+            background: linear-gradient(90deg, #4a9eff, #7b5cff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+        .subtitle { color: #8892b0; font-size: 1.1em; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .stat-card {
+            background: rgba(45, 53, 97, 0.4);
+            border: 1px solid #2d3561;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            border-color: #4a9eff;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(74, 158, 255, 0.2);
+        }
+        .stat-label {
+            color: #8892b0;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 600;
+            color: #4a9eff;
+            word-break: break-all;
+        }
+        .stat-value.small { font-size: 1.1em; }
+        h2 {
+            color: #e0e6ed;
+            margin: 30px 0 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #2d3561;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(45, 53, 97, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        th {
+            background: rgba(74, 158, 255, 0.15);
+            color: #4a9eff;
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8em;
+            letter-spacing: 1px;
+        }
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #2d3561;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: rgba(74, 158, 255, 0.05); }
+        a {
+            color: #4a9eff;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        a:hover { color: #7b5cff; text-decoration: underline; }
+        .hash { color: #7b5cff; }
+        .mono { font-family: 'Consolas', 'Monaco', monospace; }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-valid { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .badge-invalid { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        footer {
+            text-align: center;
+            color: #8892b0;
+            padding: 40px 0 20px;
+            border-top: 1px solid #2d3561;
+            margin-top: 40px;
+            font-size: 0.85em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⏳ TIME Protocol Explorer</h1>
+            <p class="subtitle">Post-Quantum Distributed Ledger Explorer</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Block Height</div>
+                <div class="stat-value">{{ height }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Blocks</div>
+                <div class="stat-value">{{ total_blocks }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total UTXOs</div>
+                <div class="stat-value">{{ total_utxos }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Difficulty</div>
+                <div class="stat-value">{{ difficulty }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Chain Status</div>
+                <div class="stat-value">
+                    {% if chain_valid %}
+                    <span class="badge badge-valid">VALID</span>
+                    {% endif %}
+                    {% if not chain_valid %}
+                    <span class="badge badge-invalid">INVALID</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <h2>📦 Latest Blocks</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Height</th>
+                    <th>Hash</th>
+                    <th>Timestamp</th>
+                    <th>Transactions</th>
+                    <th>Nonce</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for block in blocks %}
+                <tr>
+                    <td><a href="/block/{{ block.index }}">{{ block.index }}</a></td>
+                    <td><a href="/block/{{ block.index }}" class="hash">{{ block.short_hash }}...</a></td>
+                    <td>{{ block.time_str }}</td>
+                    <td>{{ block.tx_count }}</td>
+                    <td>{{ block.nonce }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <footer>
+            <p>TIME Protocol v2.1 • Built with ❤️ • © 2026 COFC Technologies LTD</p>
+            <p>API endpoints: <a href="/api/chain">/api/chain</a> • <a href="/api/stats">/api/stats</a></p>
+        </footer>
+    </div>
+</body>
+</html>

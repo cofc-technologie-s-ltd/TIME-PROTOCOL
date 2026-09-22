@@ -64,3 +64,22 @@ if __name__ == "__main__":
         spac_data = bridge.create_spac_token_wrapper("COFC-TIME", 1000000000, 5000000)
         self.assertEqual(spac_data["spac_packet"]["symbol"], "COFC-TIME")
         self.assertTrue(len(spac_data["digital_seal"]) > 0)
+
+    def test_global_asset_gateway(self):
+        from global_asset_gateway import GlobalAssetGateway
+        gateway = GlobalAssetGateway("TIME_TEST_KEY_2026")
+        
+        # Register global assets (Fiat USD, Gold, Bitcoin)
+        gateway.register_asset("USD", "FIAT", "Federal Reserve / Sovereign Bridge")
+        gateway.register_asset("XAU", "COMMODITY", "COFC Dark Vault Sovereign Gold")
+        gateway.register_asset("BTC", "CRYPTO", "Decentralized Network Bridge")
+        
+        # Execute cross-border settlement in USD
+        res_usd = gateway.execute_cross_border_settlement("ACC_SENDER_01", "ACC_RECEIVER_02", "USD", 1500000.50)
+        self.assertEqual(res_usd["status"], "SETTLED_INSTANT")
+        self.assertEqual(res_usd["iso_20022_payload"]["amount"], 1500000.50)
+        self.assertTrue(len(res_usd["cryptographic_seal"]) > 0)
+
+        # Execute settlement in Gold (XAU)
+        res_xau = gateway.execute_cross_border_settlement("ACC_VAULT_01", "ACC_GLOBAL_03", "XAU", 250.75)
+        self.assertEqual(res_xau["iso_20022_payload"]["asset_class"], "COMMODITY")

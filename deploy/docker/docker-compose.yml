@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  time-node-1:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    ports:
+      - "8080:8080"
+      - "9091:9091"
+    environment:
+      - NODE_ID=1
+      - NODE_PORT=9091
+      - API_PORT=8080
+
+  time-node-2:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    ports:
+      - "8081:8080"
+      - "9092:9091"
+    environment:
+      - NODE_ID=2
+      - NODE_PORT=9091
+      - API_PORT=8080

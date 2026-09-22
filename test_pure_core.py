@@ -161,3 +161,18 @@ if __name__ == "__main__":
         self.assertIn("cli_health", node.telemetry.metrics)
         
         node.stop_node()
+
+    def test_institutional_fix_bridge(self):
+        from nasdaq_spac_bridge import InstitutionalFIXBridge
+        bridge = InstitutionalFIXBridge("TEST_SENDER", "TEST_TARGET")
+        
+        # Test FIX message generation
+        msg = bridge.generate_fix_message("D", {"55": "BTC/USD", "54": "1", "38": "100"})
+        self.assertIn("8=FIX.4.4", msg)
+        self.assertIn("35=D", msg)
+        
+        # Test execution gateway routing
+        result = bridge.execute_order("TIME/BTC", "BUY", 500, 0.0015)
+        self.assertEqual(result["status"], "TRANSMITTED_TO_EXCHANGE")
+        self.assertIn("10=", result["fix_packet"])
+        self.assertTrue(bridge.active_session)

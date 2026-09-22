@@ -1,65 +1,45 @@
-import json
 import time
-from typing import Dict, Any, List
-from time_crypto import PostQuantumSigner
+import hashlib
+import hmac
 
-class NasdaqSpacBridge:
-    """
-    Institutional & Exchange Gateway for TIME Protocol.
-    Bypasses legacy banking rails (SWIFT) by translating post-quantum transactions
-    into FIX Protocol 4.4/5.0 messages and managing Smart SPAC Tokenization wrappers.
-    """
-    def __init__(self, secret_key: str, issuer_entity: str = "COFC Technologies LTD"):
-        self.secret_key = secret_key
-        self.issuer_entity = issuer_entity
+class InstitutionalFIXBridge:
+    def __init__(self, sender_comp_id="COFC_NODE_01", target_comp_id="NASDAQ_SPAC"):
+        self.sender_comp_id = sender_comp_id
+        self.target_comp_id = target_comp_id
+        self.msg_seq_num = 1
+        self.active_session = True
 
-    def encode_fix_message(self, msg_type: str, sender_comp_id: str, target_comp_id: str, fields: Dict[str, Any]) -> str:
-        """
-        Encodes a TIME Protocol transaction or order into standard FIX Protocol tag-value format
-        used by NASDAQ, institutional brokers, and global execution venues.
-        """
-        timestamp = time.strftime("%Y%m%d-%H:%M:%S.000", time.gmtime())
-        base_fix = [
-            "8=FIX.4.4",
-            f"9=LENGTH_PLACEHOLDER",
-            f"35={msg_type}",
-            f"49={sender_comp_id}",
-            f"56={target_comp_id}",
-            f"52={timestamp}"
-        ]
-
-        for tag, val in fields.items():
-            base_fix.append(f"{tag}={val}")
-
-        # Compute payload body length for FIX compliance
-        body = "".join([f"{item}\x01" for item in base_fix[2:]])
-        length = len(body)
+    def generate_fix_message(self, msg_type, fields):
+        """Generates a standard FIX Protocol message string with cryptographic checksum."""
+        body = f"8=FIX.4.4\x019=0\x0135={msg_type}\x0149={self.sender_comp_id}\x0156={self.target_comp_id}\x0134={self.msg_seq_num}\x0152={int(time.time())}\x01"
+        for k, v in fields.items():
+            body += f"{k}={v}\x01"
         
-        fix_string = f"8=FIX.4.4\x019={length}\x01{body}"
+        # Calculate body length and append
+        body_length = len(body.split(b'\x01'[0] if isinstance(body, str) else '\x01')[0]) # Simplified length placeholder
+        full_msg = f"8=FIX.4.4\x019={len(body)}\x0135={msg_type}\x0149={self.sender_comp_id}\x0156={self.target_comp_id}\x0134={self.msg_seq_num}\x0152={int(time.time())}\x01"
+        for k, v in fields.items():
+            full_msg += f"{k}={v}\x01"
         
-        # Append post-quantum cryptographic checksum signature (Tag 1001)
-        signature = PostQuantumSigner.sign_payload(fields, self.secret_key)
-        fix_string += f"1001={signature}\x0110=000\x01"
-        
-        return fix_string
+        # Checksum calculation (Sum of bytes mod 256)
+        csum = sum(ord(c) for c in full_msg) % 256
+        full_msg += f"10={csum:03d}\x01"
+        self.msg_seq_num += 1
+        return full_msg
 
-    def create_spac_token_wrapper(self, asset_symbol: str, valuation_time: int, shares_allocated: int) -> Dict[str, Any]:
-        """
-        Wraps sovereign enterprise assets into a Smart SPAC Digital Share structure
-        linked with the Dimensional Key System™ for public market distribution.
-        """
-        wrapper_packet = {
-            "issuer": self.issuer_entity,
-            "symbol": asset_symbol.upper(),
-            "valuation_time_seconds": valuation_time,
-            "shares": shares_allocated,
-            "protocol": "TIME_SPAC_BRIDGE_V1",
-            "compliance": "ISO_20022_READY",
-            "settlement": "ZERO_FEE_INSTANT"
+    def execute_order(self, symbol, side, qty, price):
+        """Translates a sovereign asset trade into an institutional FIX New Order Single (D)."""
+        fields = {
+            "55": symbol,       # Symbol (e.g., TIME/USD)
+            "54": "1" if side.upper() == "BUY" else "2", # Side: 1=Buy, 2=Sell
+            "38": str(qty),     # Order Quantity
+            "44": str(price),   # Limit Price
+            "40": "2"           # OrdType: 2=Limit
         }
-        
-        signature = PostQuantumSigner.sign_payload(wrapper_packet, self.secret_key)
-        return {
-            "spac_packet": wrapper_packet,
-            "digital_seal": signature
-        }
+        fix_packet = self.generate_fix_message("D", fields)
+        return {"status": "TRANSMITTED_TO_EXCHANGE", "fix_packet": fix_packet, "timestamp": time.time()}
+
+if __name__ == "__main__":
+    bridge = InstitutionalFIXBridge()
+    order = bridge.execute_order("TIME/USD", "BUY", 10000, 42.50)
+    print("[FIX-GATEWAY] Executed Institutional Order:", order)

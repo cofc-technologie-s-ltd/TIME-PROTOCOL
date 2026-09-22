@@ -83,3 +83,18 @@ if __name__ == "__main__":
         # Execute settlement in Gold (XAU)
         res_xau = gateway.execute_cross_border_settlement("ACC_VAULT_01", "ACC_GLOBAL_03", "XAU", 250.75)
         self.assertEqual(res_xau["iso_20022_payload"]["asset_class"], "COMMODITY")
+
+    def test_liquidity_router(self):
+        from liquidity_router import LiquidityRouter
+        router = LiquidityRouter("TIME_TEST_KEY_2026")
+        
+        # Submit buy order
+        buy_res = router.submit_order("TIME/USD", "BUY", 125.50, 1000.0, "TRADER_ALFA")
+        self.assertEqual(buy_res["status"], "ORDER_PROCESSED")
+        self.assertFalse(buy_res["execution"]["matched"])
+
+        # Submit matching sell order
+        sell_res = router.submit_order("TIME/USD", "SELL", 125.50, 500.0, "TRADER_BETA")
+        self.assertTrue(sell_res["execution"]["matched"])
+        self.assertEqual(sell_res["execution"]["executed_price"], 125.50)
+        self.assertEqual(sell_res["execution"]["executed_quantity"], 500.0)

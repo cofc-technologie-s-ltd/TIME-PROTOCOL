@@ -21,7 +21,7 @@ class SecureTimeNetworkNode:
             await self.server.serve_forever()
 
     async def _handle_incoming_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        data = await reader.read(4096)
+        data = await reader.read(8192)
         if not data:
             writer.close()
             return
@@ -32,12 +32,17 @@ class SecureTimeNetworkNode:
             message_data = packet.get("data")
 
             if not PostQuantumSigner.verify_payload(message_data, signature, self.secret_key):
-                response = {"status": "error", "message": "Invalid cryptographic signature"}
+                response = {"status": "error", "message": "Invalid post-quantum cryptographic signature"}
             elif action == "update":
-                success = self.ledger.update_account(message_data.get("address"), message_data.get("balance"), message_data.get("nonce"))
+                success = self.ledger.update_account(
+                    message_data.get("address"), 
+                    message_data.get("balance"), 
+                    message_data.get("nonce"),
+                    message_data.get("staked", 0)
+                )
                 response = {"status": "success" if success else "failed"}
             else:
-                response = {"status": "error", "message": "Unknown action"}
+                response = {"status": "error", "message": "Unknown action protocol"}
 
             writer.write(json.dumps(response).encode('utf-8'))
             await writer.drain()
@@ -48,8 +53,8 @@ class SecureTimeNetworkNode:
             writer.close()
             await writer.wait_closed()
 
-    async def broadcast_signed_update(self, address: str, balance: int, nonce: int) -> dict:
-        message_data = {"address": address, "balance": balance, "nonce": nonce}
+    async def broadcast_signed_update(self, address: str, balance: int, nonce: int, staked: int = 0) -> dict:
+        message_data = {"address": address, "balance": balance, "nonce": nonce, "staked": staked}
         signature = PostQuantumSigner.sign_payload(message_data, self.secret_key)
         packet = {"action": "update", "sender_id": self.node_id, "data": message_data, "signature": signature}
         payload = json.dumps(packet).encode('utf-8')

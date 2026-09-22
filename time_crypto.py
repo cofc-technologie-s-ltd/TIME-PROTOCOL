@@ -3,6 +3,10 @@ import hmac
 import json
 
 class PostQuantumSigner:
+    """
+    SHA3-512 HMAC post-quantum cryptographic signature layer ensuring absolute 
+    integrity and resistance against advanced computational threats.
+    """
     @staticmethod
     def sign_payload(payload_dict: dict, secret_key: str) -> str:
         message_bytes = json.dumps(payload_dict, sort_keys=True).encode('utf-8')

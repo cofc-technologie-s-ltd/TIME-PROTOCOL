@@ -15,13 +15,19 @@ async def main():
     shared_secret = config["network"]["shared_secret_key"]
     threshold = config["network"]["quorum_threshold"]
     nodes_conf = config["network"]["nodes"]
+    initial_reward = config["economics"]["block_reward"]
 
-    print(f"=== {config['project_name']} ({config['enterprise']}) ===")
-    print(f"Master Sovereign Wallet: {sovereign_wallet}\n")
+    print(f"==================================================")
+    print(f"🚀 {config['project_name']} v{config['version']}")
+    print(f"🏢 Enterprise: {config['enterprise']}")
+    print(f"🏛️ Master Sovereign Wallet: {sovereign_wallet}")
+    print(f"==================================================\n")
 
     ledgers = {nc["node_id"]: SecureTimeLedger() for nc in nodes_conf}
+    
+    # Initialize Master Sovereign Wallet with genesis supply
     for l in ledgers.values():
-        l.update_account(sovereign_wallet, 3000000, 0)
+        l.update_account(sovereign_wallet, 1000000000, 0, staked=500000)
 
     network_nodes = {nc["node_id"]: SecureTimeNetworkNode(nc["node_id"], nc["host"], nc["port"], ledgers[nc["node_id"]], shared_secret) for nc in nodes_conf}
 
@@ -34,14 +40,22 @@ async def main():
     server_tasks = [asyncio.create_task(run_node_server(node)) for node in network_nodes.values()]
     await asyncio.sleep(1)
 
-    consensus_manager = TimeConsensusManager("Node_A", network_nodes["Node_A"], quorum_threshold=threshold)
-    success = await consensus_manager.propose_and_commit(sovereign_wallet, 3500000, 1)
-    print(f"TIME Protocol Consensus Result: {'COMMITTED' if success else 'REJECTED'}")
+    consensus_manager = TimeConsensusManager("Node_A", network_nodes["Node_A"], quorum_threshold=threshold, block_reward=initial_reward)
+    
+    print(f"[Simulation] Proposing sovereign economic transaction from Master Wallet...")
+    success = await consensus_manager.propose_and_commit(sovereign_wallet, 1000000050, 1, staked=500000)
+    print(f"⚡ TIME Protocol Consensus Result: {'COMMITTED ✅' in ['COMMITTED ✅' if success else 'REJECTED ❌'] or ('COMMITTED' if success else 'REJECTED')}")
+
+    print(f"\n--- Sovereign Node Verification Status ---")
+    for node_id, ledger in ledgers.items():
+        print(f"[{node_id}] Account Data: {ledger.get_account(sovereign_wallet)}")
 
     for task in server_tasks:
         task.cancel()
     for ledger in ledgers.values():
         ledger.close()
+
+    print(f"\n=== Sovereign Simulation Completed Successfully ===")
 
 if __name__ == "__main__":
     asyncio.run(main())

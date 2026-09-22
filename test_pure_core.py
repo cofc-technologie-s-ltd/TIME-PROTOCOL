@@ -115,3 +115,18 @@ if __name__ == "__main__":
         report = monitor.generate_health_report()
         self.assertEqual(report["status"], "HEALTHY")
         self.assertEqual(report["total_security_alerts"], 1)
+
+    def test_p2p_network(self):
+        from p2p_network import P2PNetworkNode
+        node_a = P2PNetworkNode("VALIDATOR_A", "127.0.0.1", 9001)
+        node_b = P2PNetworkNode("VALIDATOR_B", "127.0.0.1", 9002)
+
+        # Connect peer
+        connected = node_a.connect_peer(node_b.node_id, node_b.host, node_b.port)
+        self.assertTrue(connected)
+        self.assertEqual(node_a.get_network_topology()["peer_count"], 1)
+
+        # Broadcast gossip message
+        broadcast_res = node_a.broadcast_gossip("BLOCK_COMMIT", {"block_height": 1001, "hash": "0xabc123"})
+        self.assertEqual(broadcast_res["status"], "BROADCAST_SUCCESS")
+        self.assertEqual(broadcast_res["active_peers_reached"], 1)

@@ -19,6 +19,5 @@ class TimeConsensusManager:
         approval_ratio = successful_acks / (peers_count + 1)
 
         if approval_ratio >= self.quorum_threshold:
-            # Apply state update and reward validator
             return self.network_node.ledger.update_account(address, balance, nonce, staked)
         return False

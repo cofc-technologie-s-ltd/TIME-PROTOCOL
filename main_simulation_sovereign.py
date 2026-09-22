@@ -25,7 +25,6 @@ async def main():
 
     ledgers = {nc["node_id"]: SecureTimeLedger() for nc in nodes_conf}
     
-    # Initialize Master Sovereign Wallet with genesis supply
     for l in ledgers.values():
         l.update_account(sovereign_wallet, 1000000000, 0, staked=500000)
 
@@ -44,7 +43,7 @@ async def main():
     
     print(f"[Simulation] Proposing sovereign economic transaction from Master Wallet...")
     success = await consensus_manager.propose_and_commit(sovereign_wallet, 1000000050, 1, staked=500000)
-    print(f"⚡ TIME Protocol Consensus Result: {'COMMITTED ✅' in ['COMMITTED ✅' if success else 'REJECTED ❌'] or ('COMMITTED' if success else 'REJECTED')}")
+    print(f"⚡ TIME Protocol Consensus Result: {'COMMITTED ✅' if success else 'REJECTED ❌'}")
 
     print(f"\n--- Sovereign Node Verification Status ---")
     for node_id, ledger in ledgers.items():

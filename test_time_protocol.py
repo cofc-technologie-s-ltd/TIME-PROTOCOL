@@ -1,9 +1,11 @@
 import unittest
-import asyncio
+import os
+import json
 from time_ledger import SecureTimeLedger
 from time_crypto import PostQuantumSigner
 from cash_adapter import CashProtocolAdapter
 from time_websocket import WebSocketConnectionManager
+from generate_openapi import export_openapi_spec
 
 class TestTimeProtocolCore(unittest.TestCase):
     def setUp(self):
@@ -40,6 +42,13 @@ class TestTimeProtocolCore(unittest.TestCase):
     def test_websocket_manager_initialization(self):
         ws_mgr = WebSocketConnectionManager()
         self.assertEqual(len(ws_mgr.active_connections), 0)
+
+    def test_openapi_spec_generation(self):
+        export_openapi_spec()
+        self.assertTrue(os.path.exists("openapi.json"))
+        with open("openapi.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertIn("openapi", data)
 
 if __name__ == "__main__":
     unittest.main()

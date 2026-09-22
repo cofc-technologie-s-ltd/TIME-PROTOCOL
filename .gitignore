@@ -1,1 +1,27 @@
+# Python
 __pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# TIME Protocol data
+*.wallet
+*.db
+*.sqlite
+.time_protocol/
+
+# Temp files
+*.log
+*.tmp

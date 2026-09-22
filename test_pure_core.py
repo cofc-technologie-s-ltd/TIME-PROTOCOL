@@ -6,11 +6,7 @@ from time_crypto import PostQuantumSigner
 from cash_adapter import CashProtocolAdapter
 from universal_bridge import UniversalExchangeWalletBridge
 from time_consensus import TimeConsensusManager
-
-class MockNetworkNode:
-    def __init__(self, ledger, peers=None):
-        self.ledger = ledger
-        self.peers = peers or {}
+from time_cluster import TimeClusterOrchestrator
 
 class TestPureCoreProtocol(unittest.TestCase):
     def setUp(self):
@@ -44,11 +40,11 @@ class TestPureCoreProtocol(unittest.TestCase):
         self.assertEqual(res["normalized_packet"]["source_exchange"], "COINEX")
         self.assertTrue(PostQuantumSigner.verify_payload(res["normalized_packet"], res["signature"], self.secret_key))
 
-    def test_consensus_manager(self):
-        mock_node = MockNetworkNode(self.ledger, peers={"Node_B": "active"})
-        consensus = TimeConsensusManager("Node_A", mock_node, quorum_threshold=1)
-        # We can run async check or simulate validation
-        self.assertEqual(consensus.quorum_threshold, 1)
+    def test_cluster_orchestrator(self):
+        orchestrator = TimeClusterOrchestrator(node_count=3)
+        status = orchestrator.get_cluster_status()
+        self.assertEqual(status["active_nodes"], 3)
+        self.assertTrue(orchestrator.nodes[0].process_transaction(self.master_wallet, 500, 1, 100))
 
 if __name__ == "__main__":
     unittest.main()

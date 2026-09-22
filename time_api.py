@@ -1,7 +1,7 @@
 import asyncio
 import json
-from typing import Optional, Dict, Any
-from fastapi import FastAPI, HTTPException, status
+from typing import Dict, Any
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel, Field
 import uvicorn
 
@@ -9,20 +9,21 @@ from time_ledger import SecureTimeLedger
 from time_crypto import PostQuantumSigner
 from time_network import SecureTimeNetworkNode
 from time_consensus import TimeConsensusManager
+from time_websocket import WebSocketConnectionManager
 
-# Load system configuration
 with open("config.json", "r", encoding="utf-8") as f:
     CONFIG = json.load(f)
 
 app = FastAPI(
-    title="TIME Protocol Sovereign REST API",
-    description="Enterprise-grade REST interface for exchange integration (e.g., CoinEx, Bitget), custodial wallets, and external node synchronization.",
+    title="TIME Protocol Sovereign REST & WebSockets API",
+    description="Enterprise-grade REST and WebSockets interface for live exchange integration, wallet streaming, and node interop.",
     version=CONFIG.get("version", "2.0.0-Sovereign"),
     docs_url="/docs",
     redoc_url="/redoc"
 )
 
-# Global State & Node Cluster Initialization
+ws_manager = WebSocketConnectionManager()
+
 sovereign_wallet = CONFIG["sovereign_master_wallet"]
 shared_secret = CONFIG["network"]["shared_secret_key"]
 threshold = CONFIG["network"]["quorum_threshold"]
@@ -44,14 +45,8 @@ for nc in nodes_conf:
         if peer["node_id"] != curr_id:
             network_nodes[curr_id].register_peer(peer["node_id"], peer["host"], peer["port"])
 
-consensus_manager = TimeConsensusManager(
-    "Node_A", 
-    network_nodes["Node_A"], 
-    quorum_threshold=threshold, 
-    block_reward=initial_reward
-)
+consensus_manager = TimeConsensusManager("Node_A", network_nodes["Node_A"], quorum_threshold=threshold, block_reward=initial_reward)
 
-# Request & Response Data Models
 class AccountResponse(BaseModel):
     address: str
     balance: int
@@ -60,7 +55,7 @@ class AccountResponse(BaseModel):
 
 class TransactionProposal(BaseModel):
     address: str = Field(..., description="Target wallet address")
-    balance: int = Field(..., description="New account balance post-state transition")
+    balance: int = Field(..., description="New balance post-state transition")
     nonce: int = Field(..., description="Monotonically increasing nonce")
     staked: int = Field(default=0, description="Staked collateral amount")
 
@@ -77,7 +72,6 @@ class SignatureVerifyRequest(BaseModel):
 class SignatureVerifyResponse(BaseModel):
     valid: bool
 
-# API Endpoints
 @app.get("/v1/status", tags=["System Status"])
 async def get_system_status():
     return {
@@ -104,17 +98,21 @@ async def get_account_balance(address: str):
 
 @app.post("/v1/transaction/propose", response_model=TransactionResult, tags=["Consensus Operations"])
 async def propose_transaction(tx: TransactionProposal):
-    success = await consensus_manager.propose_and_commit(
-        tx.address, 
-        tx.balance, 
-        tx.nonce, 
-        tx.staked
-    )
+    success = await consensus_manager.propose_and_commit(tx.address, tx.balance, tx.nonce, tx.staked)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Consensus rejected state transition (nonce collision or quorum failure)"
+            detail="Consensus rejected state transition"
         )
+    
+    # Broadcast live commit event over WebSocket stream
+    await ws_manager.broadcast_event("TRANSACTION_COMMITTED", {
+        "address": tx.address,
+        "balance": tx.balance,
+        "nonce": tx.nonce,
+        "staked": tx.staked
+    })
+
     return {
         "status": "COMMITTED",
         "committed": True,
@@ -126,6 +124,15 @@ async def propose_transaction(tx: TransactionProposal):
 async def verify_signature(req: SignatureVerifyRequest):
     is_valid = PostQuantumSigner.verify_payload(req.payload, req.signature, shared_secret)
     return {"valid": is_valid}
+
+@app.websocket("/v1/ws/stream")
+async def websocket_stream_endpoint(websocket: WebSocket):
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

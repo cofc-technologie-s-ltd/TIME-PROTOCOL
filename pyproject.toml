@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "time-protocol-sdk"
+version = "2.0.0"
+description = "Enterprise Post-Quantum Distributed Ledger SDK by COFC Technologies LTD"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "COFC Technologies LTD" }]
+license = { text = "MIT" }
+dependencies = [
+    "requests>=2.28.0"
+]

@@ -25,3 +25,6 @@ env/
 # Temp files
 *.log
 *.tmp
+
+# Temp demo files
+time_demo_chain.db

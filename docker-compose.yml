@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  time-protocol-api:
+    build: .
+    container_name: cofc_time_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+      - "9201:9201"
+      - "9202:9202"
+      - "9203:9203"
+    environment:
+      - NODE_ENV=production
+      - SOVEREIGN_ENTERPRISE=COFC_Technologies_LTD

@@ -42,7 +42,7 @@ TIME Protocol provides native, high-performance SDKs for all major development s
  * Global Asset Gateway: Multi-currency fiat, commodity, and crypto settlement compliant with ISO 20022.
  * High-Frequency Liquidity Router: Zero-latency order book matching engine.
 📊 Performance Benchmarks
- * Verified Throughput: \sim 544,220 TX/sec
+ * Verified Throughput: ~544,220 TX/sec
  * Execution Latency: < 0.002 seconds per 1,000 transactions
  * QA Test Suite: 100% Success Rate (Zero failures)
 📜 License

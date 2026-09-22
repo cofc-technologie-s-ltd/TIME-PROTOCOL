@@ -2,6 +2,7 @@ from .ledger import Ledger
 from .block import Block
 from .transaction import TransactionBuilder
 from .difficulty import DifficultyManager
+from .mining import MiningService
 
 
 class Node:
@@ -13,6 +14,7 @@ class Node:
             target_block_time=target_block_time,
             retarget_interval=retarget_interval,
         )
+        self.miner = MiningService(self)
         self._create_genesis_block()
 
     def _create_genesis_block(self):

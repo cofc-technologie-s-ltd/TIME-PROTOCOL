@@ -130,3 +130,19 @@ if __name__ == "__main__":
         broadcast_res = node_a.broadcast_gossip("BLOCK_COMMIT", {"block_height": 1001, "hash": "0xabc123"})
         self.assertEqual(broadcast_res["status"], "BROADCAST_SUCCESS")
         self.assertEqual(broadcast_res["active_peers_reached"], 1)
+
+    def test_sovereign_mainnet_node(self):
+        from mainnet_node import SovereignMainnetNode
+        node = SovereignMainnetNode("ROOT_VALIDATOR_01", "127.0.0.1", 8080)
+        
+        # Start node
+        start_res = node.start_node()
+        self.assertEqual(start_res["status"], "ONLINE")
+
+        # Process transaction through node
+        success = node.process_sovereign_transaction("bc1q3cmhzwxa35egpqhr5eddrqqfmdd8jyeqqkky6h", 1000, 1, 500)
+        self.assertTrue(success)
+
+        # Stop node
+        stop_res = node.stop_node()
+        self.assertEqual(stop_res["status"], "SHUTDOWN")

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TIME Protocol Explorer</title>
+    <title>TIME Protocol - Live Dashboard</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -13,208 +13,282 @@
             min-height: 100vh;
             padding: 20px;
         }
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1300px; margin: 0 auto; }
         header {
             text-align: center;
-            padding: 30px 0;
+            padding: 20px 0;
             border-bottom: 2px solid #2d3561;
-            margin-bottom: 30px;
+            margin-bottom: 24px;
         }
         h1 {
-            font-size: 2.5em;
+            font-size: 2.2em;
             background: linear-gradient(90deg, #4a9eff, #7b5cff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
-        .subtitle { color: #8892b0; font-size: 1.1em; }
+        .subtitle { color: #8892b0; font-size: 1em; }
+        .badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 12px;
+        }
+        .badge-running {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            animation: pulse 2s infinite;
+        }
+        .badge-stopped { background: rgba(107, 114, 128, 0.3); color: #9ca3af; }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+            50% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+        }
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 14px;
+            margin-bottom: 24px;
         }
         .stat-card {
             background: rgba(45, 53, 97, 0.4);
             border: 1px solid #2d3561;
-            border-radius: 12px;
-            padding: 20px;
-            transition: all 0.3s ease;
+            border-radius: 10px;
+            padding: 16px;
+            transition: all 0.2s;
         }
-        .stat-card:hover {
-            border-color: #4a9eff;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(74, 158, 255, 0.2);
-        }
-        .stat-card.highlight {
-            background: linear-gradient(135deg, rgba(74, 158, 255, 0.15), rgba(123, 92, 255, 0.15));
-            border-color: #4a9eff;
-        }
+        .stat-card:hover { border-color: #4a9eff; transform: translateY(-2px); }
         .stat-label {
             color: #8892b0;
-            font-size: 0.85em;
+            font-size: 0.75em;
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         .stat-value {
-            font-size: 1.8em;
-            font-weight: 600;
+            font-size: 1.6em;
+            font-weight: 700;
             color: #4a9eff;
-            word-break: break-all;
         }
-        .stat-value.small { font-size: 1.1em; }
-        .stat-value.green { color: #22c55e; }
-        .stat-sub {
-            color: #6b7280;
-            font-size: 0.75em;
-            margin-top: 4px;
+        .stat-value.small { font-size: 1.05em; }
+        .panel {
+            background: rgba(45, 53, 97, 0.3);
+            border: 1px solid #2d3561;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
         }
-        h2 {
-            color: #e0e6ed;
-            margin: 30px 0 20px;
-            padding-bottom: 10px;
+        .panel h2 {
+            font-size: 1.1em;
+            margin-bottom: 14px;
+            padding-bottom: 8px;
             border-bottom: 1px solid #2d3561;
+            color: #e0e6ed;
+        }
+        .btn {
+            padding: 10px 22px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
+        .btn:active { transform: translateY(0); }
+        .btn-start { background: linear-gradient(135deg, #22c55e, #16a34a); color: white; }
+        .btn-stop { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+        .btn-mine { background: linear-gradient(135deg, #4a9eff, #7b5cff); color: white; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .controls-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .controls-row input {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 14px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid #2d3561;
+            border-radius: 8px;
+            color: #e0e6ed;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9em;
+        }
+        .controls-row input:focus {
+            outline: none;
+            border-color: #4a9eff;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 130px auto;
+            gap: 10px;
+            align-items: center;
+        }
+        .form-row input {
+            padding: 10px 14px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid #2d3561;
+            border-radius: 8px;
+            color: #e0e6ed;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85em;
+        }
+        .form-row input:focus {
+            outline: none;
+            border-color: #4a9eff;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            background: rgba(45, 53, 97, 0.2);
-            border-radius: 12px;
-            overflow: hidden;
         }
         th {
             background: rgba(74, 158, 255, 0.15);
             color: #4a9eff;
-            padding: 14px 16px;
+            padding: 10px 12px;
             text-align: left;
-            font-weight: 600;
+            font-size: 0.75em;
             text-transform: uppercase;
-            font-size: 0.8em;
             letter-spacing: 1px;
         }
         td {
-            padding: 14px 16px;
+            padding: 10px 12px;
             border-bottom: 1px solid #2d3561;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 0.9em;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85em;
         }
-        tr:last-child td { border-bottom: none; }
         tr:hover { background: rgba(74, 158, 255, 0.05); }
-        a {
-            color: #4a9eff;
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-        a:hover { color: #7b5cff; text-decoration: underline; }
+        a { color: #4a9eff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
         .hash { color: #7b5cff; }
-        .badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 0.75em;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        .badge-valid { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
-        .badge-invalid { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-        .difficulty-bar {
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
             display: flex;
-            align-items: center;
-            gap: 4px;
-            margin-top: 6px;
+            flex-direction: column;
+            gap: 10px;
         }
-        .difficulty-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #4a9eff;
+        .toast {
+            padding: 14px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            color: white;
+            min-width: 250px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            transition: opacity 0.3s;
+            animation: slideIn 0.3s ease;
         }
-        .difficulty-dot.empty { background: #2d3561; }
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast-success { background: linear-gradient(135deg, #22c55e, #16a34a); }
+        .toast-error { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .toast-info { background: linear-gradient(135deg, #4a9eff, #7b5cff); }
         footer {
             text-align: center;
             color: #8892b0;
-            padding: 40px 0 20px;
+            padding: 20px 0;
             border-top: 1px solid #2d3561;
-            margin-top: 40px;
+            margin-top: 30px;
             font-size: 0.85em;
         }
     </style>
 </head>
 <body>
+    <div id="toast-container"></div>
+
     <div class="container">
         <header>
-            <h1>⏳ TIME Protocol Explorer</h1>
-            <p class="subtitle">Post-Quantum Distributed Ledger Explorer</p>
+            <h1>⏳ TIME Protocol</h1>
+            <p class="subtitle">Post-Quantum Distributed Ledger - Live Dashboard</p>
+            <div id="mining-badge" class="badge badge-stopped">⏹ MINING STOPPED</div>
         </header>
 
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-label">Block Height</div>
-                <div class="stat-value">{{ height }}</div>
+                <div class="stat-value" id="stat-height">0</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Total Blocks</div>
-                <div class="stat-value">{{ total_blocks }}</div>
-            </div>
-            <div class="stat-card highlight">
-                <div class="stat-label">⚙️ Difficulty</div>
-                <div class="stat-value">{{ difficulty }}</div>
-                <div class="stat-sub">Retarget in {{ blocks_until_retarget }} blocks</div>
+                <div class="stat-label">Difficulty</div>
+                <div class="stat-value" id="stat-difficulty">2</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">⏱ Avg Block Time</div>
-                <div class="stat-value small">{{ avg_block_time }}s</div>
-                <div class="stat-sub">Target: {{ target_block_time }}s</div>
+                <div class="stat-label">Blocks Mined</div>
+                <div class="stat-value" id="stat-blocks-mined">0</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">⚡ Hashrate</div>
-                <div class="stat-value small">{{ hashrate }}</div>
+                <div class="stat-label">Hashrate</div>
+                <div class="stat-value small" id="stat-hashrate">0 H/s</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Chain Status</div>
-                <div class="stat-value">
-                    {% if chain_valid %}
-                    <span class="badge badge-valid">VALID</span>
-                    {% endif %}
-                    {% if not chain_valid %}
-                    <span class="badge badge-invalid">INVALID</span>
-                    {% endif %}
-                </div>
+                <div class="stat-label">Avg Block Time</div>
+                <div class="stat-value small" id="stat-avg-time">0s</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total UTXOs</div>
+                <div class="stat-value" id="stat-utxos">0</div>
             </div>
         </div>
 
-        <h2>📦 Latest Blocks</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Height</th>
-                    <th>Hash</th>
-                    <th>Difficulty</th>
-                    <th>Time</th>
-                    <th>Transactions</th>
-                    <th>Nonce</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for block in blocks %}
-                <tr>
-                    <td><a href="/block/{{ block.index }}">{{ block.index }}</a></td>
-                    <td><a href="/block/{{ block.index }}" class="hash">{{ block.short_hash }}...</a></td>
-                    <td>{{ block.difficulty }}</td>
-                    <td>{{ block.time_str }}</td>
-                    <td>{{ block.tx_count }}</td>
-                    <td>{{ block.nonce }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="panel">
+            <h2>⛏ Mining Control</h2>
+            <div class="controls-row">
+                <input type="text" id="miner-address" placeholder="Miner address (default: WEB_MINER)" value="WEB_MINER">
+                <button class="btn btn-start" onclick="startMining()">▶ Start</button>
+                <button class="btn btn-stop" onclick="stopMining()">⏹ Stop</button>
+                <button class="btn btn-mine" onclick="mineOneBlock()">⛏ Mine 1 Block</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>📤 Send Transaction</h2>
+            <form onsubmit="sendTransaction(event)">
+                <div class="form-row">
+                    <input type="text" name="from_address" placeholder="From (private key or address)" required>
+                    <input type="text" name="to_address" placeholder="To address" required>
+                    <input type="number" name="amount" placeholder="Amount" step="0.00000001" min="0.00000001" required>
+                    <button type="submit" class="btn btn-mine">Send</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h2>📦 Latest Blocks (live)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Height</th>
+                        <th>Hash</th>
+                        <th>Diff</th>
+                        <th>Time</th>
+                        <th>TXs</th>
+                        <th>Nonce</th>
+                    </tr>
+                </thead>
+                <tbody id="blocks-tbody">
+                    <tr><td colspan="6" style="text-align:center; color:#8892b0;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
 
         <footer>
-            <p>TIME Protocol v2.4.0 • Dynamic Difficulty • © 2026 COFC Technologies LTD</p>
-            <p>API: <a href="/api/chain">/api/chain</a> • <a href="/api/stats">/api/stats</a> • <a href="/api/difficulty">/api/difficulty</a></p>
+            <p>TIME Protocol v3.0 • Interactive Dashboard • © 2026 COFC Technologies LTD</p>
         </footer>
     </div>
+
+    <script src="/static/app.js"></script>
 </body>
 </html>

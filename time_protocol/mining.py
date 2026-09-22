@@ -128,3 +128,26 @@ class MiningService:
             return self._running
 
 
+
+
+class AutoSaveMiningService(MiningService):
+    """
+    Mining service that auto-saves each block to persistent storage.
+    """
+    
+    def __init__(self, node, storage=None, on_block_mined=None):
+        self.storage = storage
+        
+        def combined_callback(block):
+            # Save block to disk
+            if self.storage:
+                try:
+                    self.storage.save_block(block)
+                except Exception as e:
+                    print(f"[!] Auto-save failed: {e}")
+            
+            # Call user callback
+            if on_block_mined:
+                on_block_mined(block)
+        
+        super().__init__(node, on_block_mined=combined_callback)
